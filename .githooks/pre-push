@@ -1,0 +1,34 @@
+#!/bin/sh
+# Pre-push hook: prevent accidental pushes that include `.env` or `node_modules`
+# This hook checks three things and aborts the push if any are true:
+# 1) `.env` is tracked in the repository
+# 2) any files under `node_modules/` are tracked in the repository
+# 3) the staged/committed changes include `.env` or files in `node_modules/`
+
+echo "Running pre-push safety checks..."
+
+# 1) is .env tracked?
+if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+  echo "ERROR: Detected tracked file '.env' in repository."
+  echo "Please remove it from git history and add it to .gitignore before pushing."
+  exit 1
+fi
+
+# 2) are there any tracked files under node_modules?
+if git ls-files node_modules | grep -q . >/dev/null 2>&1; then
+  echo "ERROR: Detected tracked files under 'node_modules/'."
+  echo "Remove them from the repository (git rm -r --cached node_modules) and commit the removal."
+  exit 1
+fi
+
+# 3) are staged changes including .env or node_modules? (prevents pushing new additions)
+STAGED=$(git diff --cached --name-only)
+echo "$STAGED" | grep -E '(^|/)node_modules/|^\.env$' >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+  echo "ERROR: Your staged commit includes .env or files under node_modules/."
+  echo "Unstage or remove those files before pushing."
+  exit 1
+fi
+
+echo "Pre-push checks passed. Proceeding with push."
+exit 0
