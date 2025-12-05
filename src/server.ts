@@ -2,19 +2,28 @@ import express, { Request, Response } from 'express'
 import {Pool} from "pg";
 import dotenv from 'dotenv';
 import path from 'path';
-dotenv.config({path: path.join(process.cwd(),' .env')});
+// Load .env from project root (no accidental leading space)
+dotenv.config();
+
+// Safe debug: show parsed DB host (do NOT print full connection string in logs)
+const _conn = process.env.CONNECTION_STATUS || '';
+try {
+  const _url = new URL(_conn);
+  console.log('DB host:', _url.hostname);
+} catch (e) {
+  console.log('DB connection string not set or invalid (preview):', _conn.slice(0,60));
+}
+
+// DEBUG: list environment keys that include 'CON' or 'DB' or 'PG' to find hidden keys
+const envKeys = Object.keys(process.env || {});
+console.log('ENV keys count:', envKeys.length);
+envKeys.filter(k => /CON|DB|PG|BASE/i.test(k)).forEach(k => {
+  const v = process.env[k] || '';
+  console.log(`ENV-DEBUG ${k}: ${v.toString().slice(0,80)}`);
+});
 
 const app = express()
 const port = 5000
-
-console.log('server: starting (begin)')
-
-process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled Rejection at:', reason)
-})
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err)
-})
 
 //DB Connection
 const pool = new Pool({
